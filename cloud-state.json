@@ -1,1 +1,10 @@
-{}
+{
+  "standings": {
+    "messageId": "1562190408455294998",
+    "webhookHash": "b769061aeb785b7ff0ceb670efe9a68225d5c16c9766615e366ca90cf9c03a55"
+  },
+  "stats": {
+    "messageId": "1562190413459103886",
+    "webhookHash": "a0bbf824e76add8620b10b1b9ddb900e446f12d0de705d572c87de79bab105f0"
+  }
+}
