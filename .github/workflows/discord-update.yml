@@ -1,0 +1,41 @@
+name: Update Greedy XI in Discord
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: greedy-xi-discord
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Refresh the Discord displays
+        env:
+          STANDINGS_WEBHOOK_URL: ${{ secrets.STANDINGS_WEBHOOK_URL }}
+          STATS_WEBHOOK_URL: ${{ secrets.STATS_WEBHOOK_URL }}
+        run: node cloud.mjs
+      - name: Remember Discord message IDs
+        if: ${{ always() }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- cloud-state.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Remember Discord display message IDs'
+            git push
+          fi
