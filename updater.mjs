@@ -69,16 +69,18 @@ export async function fetchStats(c, get=api) {
   return data;
 }
 export function standingsPayload(data, c, stamp=new Date().toISOString()) {
-  const ours=data.rows.find(r=>r.teamSlug===c.teamSlug || r.teamName.toLowerCase()===c.teamName.toLowerCase());
-  const fields=data.rows.map(r=>({
-    name:`${r.teamSlug===c.teamSlug || r===ours?'⭐ ':''}${r.position}. ${clean(r.teamName).slice(0,100)}`,
-    value:`Played **${r.played}** · GD **${r.goalDifference>0?'+':''}${r.goalDifference}** · Pts **${r.totalPoints ?? r.points}**`,
-    inline:false
-  }));
+  const nameWidth=17;
+  const header=' # '+'Team'.padEnd(nameWidth)+'  P  GD Pts';
+  const lines=data.rows.map(r=>{
+    const name=clean(r.teamName);
+    const label=name.length>nameWidth?name.slice(0,nameWidth-1)+'…':name;
+    return `${String(r.position).padStart(2)} ${label.padEnd(nameWidth)} ${String(r.played).padStart(2)} ${String(r.goalDifference).padStart(3)} ${String(r.totalPoints ?? r.points).padStart(3)}`;
+  });
   const embeds=[];
-  for(let i=0;i<fields.length;i+=10) embeds.push({title:`${data.title}${i?' (continued)':''}`,fields:fields.slice(i,i+10),color:COLOR});
-  if(ours) embeds[0].description=`⭐ **${markdown(c.teamName)}: #${ours.position} · ${ours.totalPoints ?? ours.points} points**`;
-  embeds.at(-1).footer={text:`Virtualeagues • Checked every ${c.intervalMinutes} minutes • GD = goal difference • Last successful check`};
+  for(let i=0;i<lines.length;i+=18) embeds.push({title:`${data.title}${i?' (continued)':''}`,description:'```text\n'+header+'\n'+lines.slice(i,i+18).join('\n')+'\n```',color:COLOR});
+  const ours=data.rows.find(r=>r.teamSlug===c.teamSlug || r.teamName.toLowerCase()===c.teamName.toLowerCase());
+  if(ours) embeds[0].fields=[{name:c.teamName,value:`#${ours.position} • P ${ours.played} • GD ${ours.goalDifference} • ${ours.totalPoints ?? ours.points} pts`}];
+  embeds.at(-1).footer={text:`Virtualeagues • Checked every ${c.intervalMinutes} minutes • P played / GD goal difference / Pts points`};
   embeds.at(-1).timestamp=stamp;
   return validatePayload({embeds,allowed_mentions:{parse:[]}});
 }
