@@ -2,19 +2,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DEFAULTS, webhook, save, fetchLeague, fetchStats, standingsPayload, statsPayload, publish} from './updater.mjs';
+import {fetchFixtures,fixturesPayload} from './fixtures.mjs';
 
 // Each GitHub run updates both messages once and exits. Only non-secret message
 // IDs and webhook hashes are committed. URLs come exclusively from Actions secrets.
-export async function runCloud({env=process.env, file=fileURLToPath(new URL('./cloud-state.json',import.meta.url)), getLeague=fetchLeague, getStats=fetchStats, send=publish, log=console.log}={}) {
+export async function runCloud({env=process.env, file=fileURLToPath(new URL('./cloud-state.json',import.meta.url)), getLeague=fetchLeague, getStats=fetchStats, getFixtures=fetchFixtures, send=publish, log=console.log}={}) {
   const c={...DEFAULTS, intervalMinutes:15};
   if(!env.STANDINGS_WEBHOOK_URL || !env.STATS_WEBHOOK_URL) throw new Error('Add both repository secrets: STANDINGS_WEBHOOK_URL and STATS_WEBHOOK_URL.');
   c.standingsWebhook=webhook(env.STANDINGS_WEBHOOK_URL);
   c.statsWebhook=webhook(env.STATS_WEBHOOK_URL);
   if(c.standingsWebhook===c.statsWebhook) throw new Error('Use a separate webhook for each channel.');
+  if(env.FIXTURES_WEBHOOK_URL) {
+    c.fixturesWebhook=webhook(env.FIXTURES_WEBHOOK_URL);
+    if([c.standingsWebhook,c.statsWebhook].includes(c.fixturesWebhook))throw new Error('Use a separate webhook for upcoming games.');
+  }
   // Fail closed on damaged/missing state rather than silently creating duplicates.
   const state=JSON.parse(fs.readFileSync(file,'utf8'));
   let failures=0;
-  for(const [key,get,format] of [['standings',getLeague,standingsPayload],['stats',getStats,statsPayload]]) {
+  const tasks=[['standings',getLeague,standingsPayload],['stats',getStats,statsPayload]];
+  if(c.fixturesWebhook)tasks.push(['fixtures',getFixtures,fixturesPayload]);
+  for(const [key,get,format] of tasks) {
     try {
       const payload=format(await get(c),c);
       const last=payload.embeds.at(-1);
