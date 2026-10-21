@@ -28,6 +28,7 @@ jobs:
         env:
           STANDINGS_WEBHOOK_URL: ${{ secrets.STANDINGS_WEBHOOK_URL }}
           STATS_WEBHOOK_URL: ${{ secrets.STATS_WEBHOOK_URL }}
+          FIXTURES_WEBHOOK_URL: ${{ secrets.FIXTURES_WEBHOOK_URL }}
         run: node cloud.mjs
       - name: Remember Discord message IDs
         if: ${{ always() }}
