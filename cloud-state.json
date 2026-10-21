@@ -6,5 +6,9 @@
   "stats": {
     "messageId": "1562190413459103886",
     "webhookHash": "a0bbf824e76add8620b10b1b9ddb900e446f12d0de705d572c87de79bab105f0"
+  },
+  "fixtures": {
+    "messageId": "1562461033862266921",
+    "webhookHash": "7ca3b1b2e7413828f4295f4bd70ce341e3ad107b005ee61611c795a15662f3eb"
   }
 }
