@@ -2,6 +2,10 @@ import {request,validatePayload} from './updater.mjs';
 
 const zone='America/New_York';
 const text=x=>String(x??'').replace(/[`<>@\\\r\n]/g,'').replace(/([*_~|])/g,'\\$1');
+function badge(value) {
+  try { const u=new URL(value);return u.protocol==='https:' && !u.username && !u.password?u.href:null; }
+  catch { return null; }
+}
 // Mirror Virtualeagues' getScheduledDatetime: matchTime is Eastern time,
 // and older records may store either a date-only UTC value or an actual instant.
 function easternDate(d) {
@@ -42,7 +46,7 @@ export function nextFixtures(team,now=new Date()) {
         const date=kickoff(m);
         if(date && date<=now)continue;
         if(!m.id)throw new Error('Fixture identifier missing.');
-        found.set(m.id,{id:m.id,opponent:m[opponentKey]?.team?.name || 'Opponent TBC',venue,competition:name,date:date?.toISOString()??null,postponed:m.status==='POSTPONED'});
+        found.set(m.id,{id:m.id,opponent:m[opponentKey]?.team?.name || 'Opponent TBC',teamBadge:badge(team.logoUrl),opponentBadge:badge(m[opponentKey]?.team?.logoUrl),venue,competition:name,date:date?.toISOString()??null,postponed:m.status==='POSTPONED'});
       }
     }
   }
@@ -56,9 +60,21 @@ export async function fetchFixtures(c,get=endpoint=>request('https://www.virtual
   return nextFixtures(data.team,now);
 }
 export function fixturesPayload(matches,c,stamp=new Date().toISOString()) {
-  const fields=matches.map((m,i)=>{
-    const when=m.date?`<t:${Math.floor(Date.parse(m.date)/1000)}:F>\n<t:${Math.floor(Date.parse(m.date)/1000)}:R>`:'Date and time TBC';
-    return {name:`${i+1}. ${text(c.teamName)} vs ${text(m.opponent)}`.slice(0,256),value:`**${m.venue}** • ${text(m.competition).slice(0,200)}\n${when}${m.postponed?'\n⚠️ Postponed — check the revised kickoff.':''}`,inline:false};
+  const embeds=matches.slice(0,2).map((m,i)=>{
+    const unix=m.date?Math.floor(Date.parse(m.date)/1000):null;
+    const when=unix?`<t:${unix}:D>\n<t:${unix}:t> · <t:${unix}:R>`:'Date and time TBC';
+    const ownBadge=badge(m.teamBadge),opponentBadge=badge(m.opponentBadge);
+    return {
+      author:{name:`${c.teamName} · ${i===0?'NEXT MATCH':'UP NEXT'}`.slice(0,256),...(ownBadge?{icon_url:ownBadge}:{})},
+      title:`vs ${text(m.opponent)}`.slice(0,256),
+      description:text(m.competition).slice(0,200)+(m.postponed?'\n⚠️ Postponed':''),
+      color:m.venue==='Home'?0x00c997:0xed0960,
+      fields:[{name:'📅 Kickoff',value:when,inline:true},{name:m.venue==='Home'?'🏠 Home':'✈️ Away',value:text(c.teamName).slice(0,200),inline:true}],
+      ...(opponentBadge?{thumbnail:{url:opponentBadge}}:{})
+    };
   });
-  return validatePayload({embeds:[{title:`${c.teamName} — Next 2 games`,description:matches.length?'Upcoming fixtures across competitions. Kickoffs display in your local timezone.':'No upcoming fixtures currently listed on Virtualeagues.',fields,color:0xed0960,footer:{text:`Virtualeagues • Checks every ${c.intervalMinutes} minutes • Last successful check`},timestamp:stamp}],allowed_mentions:{parse:[]}});
+  if(!embeds.length)embeds.push({title:`${c.teamName} — Next games`,description:'No upcoming fixtures currently listed.',color:0xed0960});
+  embeds.at(-1).footer={text:`Virtualeagues • Checks every ${c.intervalMinutes} minutes • Last successful check`};
+  embeds.at(-1).timestamp=stamp;
+  return validatePayload({embeds,allowed_mentions:{parse:[]}});
 }

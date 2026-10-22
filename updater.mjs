@@ -90,7 +90,7 @@ export function statsPayload(d,c,stamp=new Date().toISOString()) {
   const result=x=>x?`${clean(x.score)} vs ${markdown(x.opponent)}`:'None yet';
   const fields=[{name:'Team summary',value:`Matches **${s.matches}** • Wins **${s.wins}** • Draws **${s.draws}** • Losses **${s.losses}**\nGoals for **${s.goalsFor}** • Against **${s.goalsAgainst}** • Difference **${s.goalDifference}**\nClean sheets **${s.cleanSheets}** • Win rate **${s.winRate}%** • Streak **${clean(s.currentStreak)||'None'}**\nBiggest win: ${result(s.biggestWin)}\nHeaviest loss: ${result(s.heaviestLoss)}`}];
   for(const [key,name,metric] of LEADERS) fields.push({name,value:(d[key]??[]).slice(0,5).map((p,i)=>`${i+1}. ${markdown(clean(p.name).slice(0,70))} — **${p[metric] ?? 0}**`).join('\n')||'No data recorded yet',inline:true});
-  return validatePayload({embeds:[{title:`${c.teamName} — ${d.era.name} stats`,description:'Current era, across competitions • Same scope as Stats → Era on the website.\nLeaderboards show up to five players per category.',color:COLOR,fields,footer:{text:`Virtualeagues • Last successful check • Checks every ${c.intervalMinutes} minutes`},timestamp:stamp}],allowed_mentions:{parse:[]}});
+  return validatePayload({embeds:[{title:`${c.teamName} — ${d.era.name} stats`,color:COLOR,fields,footer:{text:`Virtualeagues • Last successful check • Checks every ${c.intervalMinutes} minutes`},timestamp:stamp}],allowed_mentions:{parse:[]}});
 }
 export function validatePayload(p) {
   let chars=0;
