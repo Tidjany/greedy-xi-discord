@@ -1,0 +1,44 @@
+name: Update RPCL in Discord
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '11,26,41,56 * * * *'
+
+permissions:
+  contents: write
+
+# Share the existing updater's lock so the two jobs cannot race while saving IDs.
+concurrency:
+  group: greedy-xi-discord
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Refresh RPCL displays
+        env:
+          RPCL_STANDINGS_WEBHOOK_URL: ${{ secrets.RPCL_STANDINGS_WEBHOOK_URL }}
+          RPCL_FIXTURES_WEBHOOK_URL: ${{ secrets.RPCL_FIXTURES_WEBHOOK_URL }}
+          RPCL_STATS_WEBHOOK_URL: ${{ secrets.RPCL_STATS_WEBHOOK_URL }}
+        run: node rpcl.mjs
+      - name: Remember RPCL message IDs
+        if: ${{ always() }}
+        run: |
+          if [ ! -f rpcl-state.json ]; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- rpcl-state.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Remember RPCL Discord message IDs'
+            git push
+          fi
